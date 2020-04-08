@@ -37,6 +37,9 @@ namespace FileHelper {
         bool good () const {
             return file.good();
         }
+        void clearErrors () const {
+            file.clear();
+        }
 
         std::vector<std::byte> read (size_t absolute_position, size_t amount) {
             std::vector<std::byte> bytes;
