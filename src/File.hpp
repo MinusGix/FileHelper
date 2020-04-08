@@ -6,9 +6,6 @@
 #include <array>
 #include <cstddef>
 
-#include <chrono>
-#include <thread>
-
 namespace File {
     class File {
         protected:
