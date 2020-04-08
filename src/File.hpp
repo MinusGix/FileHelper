@@ -16,7 +16,8 @@ namespace FileHelper {
 
         public:
 
-        explicit File (const std::filesystem::path& t_filename, std::ios_base::openmode t_open_mode) : filename(std::filesystem::canonical(std::filesystem::absolute(t_filename))), open_mode(t_open_mode){
+        explicit File () {}
+        explicit File (const std::filesystem::path& t_filename, std::ios_base::openmode t_open_mode) : filename(std::filesystem::canonical(std::filesystem::absolute(t_filename))), open_mode(t_open_mode) {
             file.open(filename, open_mode);
 
             if (file.fail()) {
