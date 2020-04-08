@@ -25,6 +25,19 @@ namespace FileHelper {
             }
         }
 
+        bool fail () const {
+            return file.fail();
+        }
+        bool bad () const {
+            return file.bad();
+        }
+        bool eof () const {
+            return file.eof();
+        }
+        bool good () const {
+            return file.good();
+        }
+
         std::vector<std::byte> read (size_t absolute_position, size_t amount) {
             std::vector<std::byte> bytes;
             bytes.reserve(amount);
