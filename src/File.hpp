@@ -37,7 +37,7 @@ namespace FileHelper {
         bool good () const {
             return file.good();
         }
-        void clearErrors () const {
+        void clearErrors () {
             file.clear();
         }
 
