@@ -6,7 +6,7 @@
 #include <array>
 #include <cstddef>
 
-namespace File {
+namespace FileHelper {
     class File {
         protected:
 

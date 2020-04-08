@@ -6,7 +6,7 @@ int main () {
 
 	std::filesystem::remove("./output2.bin");
 	std::filesystem::copy_file("./output.bin", "./output2.bin");
-	File::File file("./output2.bin", std::ios_base::binary | std::ios_base::in | std::ios_base::out);
+	FileHelper::File file("./output2.bin", std::ios_base::binary | std::ios_base::in | std::ios_base::out);
 
 	size_t delete_amount = 6;
 	file.deletion<120>(5, delete_amount);
