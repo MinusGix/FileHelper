@@ -9,9 +9,9 @@ int main () {
 	FileHelper::File file("./output2.bin", std::ios_base::binary | std::ios_base::in | std::ios_base::out);
 
 	size_t delete_amount = 6;
-	file.deletion<120>(5, delete_amount);
+	file.deletion(5, delete_amount, 120);
 	file.resize(file.getSize() - delete_amount);
-	file.insertion<120>(5, {std::byte(1), std::byte(2), std::byte(3), std::byte(4), std::byte(5), std::byte(6)});
+	file.insertion(5, {std::byte(1), std::byte(2), std::byte(3), std::byte(4), std::byte(5), std::byte(6)}, 120);
 
 	return 0;
 }

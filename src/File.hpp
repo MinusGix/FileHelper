@@ -63,8 +63,7 @@ namespace FileHelper {
             file.write(data, amount);
         }
 
-        template<size_t SIZE>
-        void insertionNoOverwrite (size_t absolute_position, size_t amount) {
+        void insertionNoOverwrite (size_t absolute_position, size_t amount, size_t chunk_size) {
             // This function only inserts null bytes. Replacing them is an action which can be done afterwards
             // TODO: this could potentially be done in this function if we were given a vector of bytes, and could be a separate function pretty easily.
 
@@ -75,13 +74,13 @@ namespace FileHelper {
             // If we were to insert one byte (0) at position 5 into data
             //  insert(data, 5, 1) = {a b c d e 0 f g h i j k l m n o p q r s t u v w x y z}
             // Simple, but should explain how we get there.
-            // Let's use [SIZE] as the size of the chunks we should make.
-            //  We'll assume [SIZE] is 4.
+            // Let's use [chunk_size] as the size of the chunks we should make.
+            //  We'll assume [chunk_size] is 4.
             // insert(data, 5, 1) would be done as:
             //  {a b c d e f g h i j k l m n o p q r s t u v w x y z}
             //            ^ We insert here, since that is where position five is. This would be before the 'f' byte.
-            // Divide it into chunks of [SIZE], but only the parts *after* where we are inserting. (Thus, everything before the insertion point is untouched)
-            //   There may be 0 chunks, and the last chunk does not have to be equivalent. All of the chunk's sizes are <= SIZE
+            // Divide it into chunks of [chunk_size], but only the parts *after* where we are inserting. (Thus, everything before the insertion point is untouched)
+            //   There may be 0 chunks, and the last chunk does not have to be equivalent. All of the chunk's sizes are <= chunk_size
             //  {a b c d e {f g h i} {j k l m} {n o p q} {r s t u} {v w x y} {z}}
             //            ^
             // We then need to add new bytes to the end of the file, since we are *expanding* it.
@@ -115,16 +114,18 @@ namespace FileHelper {
             // The amount of bytes we have to move.
             const size_t shift_amount = shift_end - absolute_position;
             // The amount of chunks we have (and thus the amount of shifts we must make).
-            const size_t shift_iterations = (shift_amount / SIZE) + (shift_amount % SIZE == 0 ? 0 : 1);
+            const size_t shift_iterations = (shift_amount / chunk_size) + (shift_amount % chunk_size == 0 ? 0 : 1);
 
-            // The amount in the first slice (if one exists). Either SIZE (file is divided into equal chunks) or the remainder.
-            const size_t first_slice_amount = (shift_end % SIZE) == 0 ? SIZE : (shift_end % SIZE);
+            // The amount in the first slice (if one exists). Either chunk_size (file is divided into equal chunks) or the remainder.
+            const size_t first_slice_amount = (shift_end % chunk_size) == 0 ? chunk_size : (shift_end % chunk_size);
 
-            std::array<std::byte, SIZE> transpose_data;
+            // statically sized as [chunk_size]
+            std::vector<std::byte> transpose_data;
+            transpose_data.resize(chunk_size);
             for (size_t i = 0; i < shift_iterations; i++) {
-                // First iteration is on the last chunk, so then it could be a size <= SIZE, while all other chunks are == SIZE
-                const size_t slice_start = shift_end - first_slice_amount - (i * SIZE);
-                const size_t slice_amount = i == 0 ? first_slice_amount : SIZE;
+                // First iteration is on the last chunk, so then it could be a size <= chunk_size, while all other chunks are == chunk_size
+                const size_t slice_start = shift_end - first_slice_amount - (i * chunk_size);
+                const size_t slice_amount = i == 0 ? first_slice_amount : chunk_size;
                 const size_t slice_destination = slice_start + amount;
 
                 const size_t slice_read_amount = read(slice_start, slice_amount, reinterpret_cast<char*>(transpose_data.data()));
@@ -137,46 +138,44 @@ namespace FileHelper {
             }
         }
 
-        template<size_t SIZE>
         /// Insert's bytes into the file.
         /// Technically resizes the file since it writes more bytes out than was originally in the file
         /// So .resize is not needed (though can be done without harm)
-        void insertion (size_t absolute_position, size_t amount) {
-            insertionNoOverwrite<SIZE>(absolute_position, amount);
+        void insertion (size_t absolute_position, size_t amount, size_t chunk_size) {
+            insertionNoOverwrite(absolute_position, amount, chunk_size);
 
-            // Writes out the series in SIZE chunks.
+            // Writes out the series in chunk_size chunks.
 
             // An array of 0's to write.
-            std::array<std::byte, SIZE> data;
+            std::vector<std::byte> data;
+            data.resize(chunk_size);
             for (size_t i = 0; i < data.size(); i++) {
                 data[i] = std::byte(0x00);
             }
 
             const size_t amount_end = absolute_position + amount;
-            const size_t amount_iterations = (amount / SIZE) + (amount % SIZE == 0 ? 0 : 1);
+            const size_t amount_iterations = (amount / chunk_size) + (amount % chunk_size == 0 ? 0 : 1);
             for (size_t i = 0; i < amount_iterations; i++) {
-                const size_t slice_start = absolute_position + (i * SIZE);
-                const size_t slice_end = std::min(slice_start + SIZE, amount_end);
+                const size_t slice_start = absolute_position + (i * chunk_size);
+                const size_t slice_end = std::min(slice_start + chunk_size, amount_end);
                 const size_t slice_amount = slice_end - slice_start;
 
                 write(slice_start, slice_amount, reinterpret_cast<const char*>(data.data()));
             }
         }
 
-        template<size_t SIZE>
         /// Insert's bytes into the file.
         /// .resize is not needed.
         /// [data] is the data which should be inserted into the file at [absolute_position]
-        void insertion (size_t absolute_position, const std::vector<std::byte>& data) {
-            insertionNoOverwrite<SIZE>(absolute_position, data.size());
+        void insertion (size_t absolute_position, const std::vector<std::byte>& data, size_t chunk_size) {
+            insertionNoOverwrite(absolute_position, data.size(), chunk_size);
 
             write(absolute_position, data.size(), reinterpret_cast<const char*>(data.data()));
         }
 
-        template<size_t SIZE>
         /// Delete's bytes from the file
         /// Note that it does NOT resize the file. It is up to the caller to call .resize with the appropriate size.
-        void deletion (size_t absolute_position, size_t amount) {
+        void deletion (size_t absolute_position, size_t amount, size_t chunk_size) {
             // We only want to shift what's after the deletion.
             const size_t shift_start = absolute_position + amount;
             // Obviously we want to stop at the end of the file.
@@ -184,14 +183,15 @@ namespace FileHelper {
             // How many bytes will be shifted over.
             const size_t shift_amount = shift_end - shift_start;
             // The amount of shifts we'll have to do.
-            const size_t shift_iterations = (shift_amount / SIZE) + (shift_amount % SIZE == 0 ? 0 : 1);
+            const size_t shift_iterations = (shift_amount / chunk_size) + (shift_amount % chunk_size == 0 ? 0 : 1);
             // Used to store the data that we are moving.
-            std::array<std::byte, SIZE> transpose_data;
+            std::vector<std::byte> transpose_data;
+            transpose_data.resize(chunk_size);
             for (size_t i = 0; i < shift_iterations; i++) {
                 // Where we start reading from, the data we're going to move
-                const size_t slice_start = shift_start + (i * SIZE);
-                // Where we're gonna end at. Either after [SIZE] bytes or at the end of the data we're shifting (aka end of file)
-                const size_t slice_end = std::min(slice_start + SIZE, shift_end);
+                const size_t slice_start = shift_start + (i * chunk_size);
+                // Where we're gonna end at. Either after [chunk_size] bytes or at the end of the data we're shifting (aka end of file)
+                const size_t slice_end = std::min(slice_start + chunk_size, shift_end);
                 // The amount of bytes between the end and the start
                 const size_t slice_amount = slice_end - slice_start;
 
