@@ -215,6 +215,10 @@ namespace FileHelper {
             file.open(filename, open_mode);
         }
 
+        void close () {
+            file.close();
+        }
+
         size_t getSize () {
             // TODO: I don't like having to close and reopen the file just to get the file size in bytes...
             file.close();
